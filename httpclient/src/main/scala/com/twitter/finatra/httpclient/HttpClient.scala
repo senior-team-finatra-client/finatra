@@ -1,6 +1,6 @@
 package com.twitter.finatra.httpclient
 
-import com.twitter.finagle.Service
+import com.twitter.finagle.{Http, Service}
 import com.twitter.finagle.http.{Request, Response, Status}
 import com.twitter.finagle.service.RetryPolicy
 import com.twitter.finatra.json.FinatraObjectMapper
@@ -23,9 +23,13 @@ class HttpClient(
   hostname: String = "",
   httpService: Service[Request, Response],
   retryPolicy: Option[RetryPolicy[Try[Response]]] = None,
-  defaultHeaders: Map[String, String] = Map(),
-  mapper: FinatraObjectMapper
+  defaultHeaders: Map[String, String] = Map()
 ) extends Logging {
+
+  def this(dest: String){
+    var service: Service[Request, Response] = Http.client.newService(dest)
+    this(httpService = service)
+  }
 
   /* Public */
 
@@ -37,20 +41,6 @@ class HttpClient(
     retryPolicy match {
       case Some(policy) => RetryUtils.retryFuture(policy)(httpService(request))
       case _ => httpService(request)
-    }
-  }
-
-  def executeJson[T: Manifest](request: Request, expectedStatus: Status = Status.Ok): Future[T] = {
-
-    execute(request) flatMap { httpResponse =>
-      if (httpResponse.status != expectedStatus) {
-        Future.exception(new HttpClientException(httpResponse.status, httpResponse.contentString))
-      } else {
-        Future(FinatraObjectMapper.parseResponseBody[T](httpResponse, mapper.reader[T]))
-          .transformException { e =>
-            new HttpClientException(httpResponse.status, s"${e.getClass.getName} - ${e.getMessage}")
-          }
-      }
     }
   }
 

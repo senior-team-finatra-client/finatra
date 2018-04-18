@@ -26,27 +26,15 @@ abstract class HttpClientModule extends TwitterModule {
   @Singleton
   @Provides
   def provideHttpClient(
-    mapper: FinatraObjectMapper,
-    httpService: Service[Request, Response]
+    mapper: FinatraObjectMapper
   ): HttpClient = {
 
     new HttpClient(
       hostname = hostname,
-      httpService = httpService,
+      dest = dest,
       retryPolicy = retryPolicy,
       defaultHeaders = defaultHeaders,
       mapper = mapper
     )
-  }
-
-  @Singleton
-  @Provides
-  def provideHttpService: Service[Request, Response] = {
-    sslHostname match {
-      case Some(ssl) =>
-        RichHttpClient.newSslClientService(sslHostname = ssl, dest = dest)
-      case _ =>
-        RichHttpClient.newClientService(dest = dest)
-    }
   }
 }
